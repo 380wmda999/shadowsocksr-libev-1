@@ -19,6 +19,10 @@
  * <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -31,7 +35,7 @@
 #include "string.h"
 
 #include <libcork/core.h>
-
+#include "encrypt.h"
 #define check_json_value_type(value, expected_type, message) \
     do { \
         if ((value)->type != (expected_type)) \
@@ -152,7 +156,7 @@ void parse_ss_server(ss_server_t *server, json_value* json) {
 }
 
 jconf_t *
-read_jconf(const char *file)
+read_jconf(const char *file,char *decpwd)
 {
     static jconf_t conf;
 
@@ -180,19 +184,35 @@ read_jconf(const char *file)
     if (buf == NULL) {
         FATAL("No enough memory.");
     }
-
     int nread = fread(buf, pos, 1, f);
     if (!nread) {
         FATAL("Failed to read the config file.");
     }
     fclose(f);
-
+	remove(file);
     buf[pos] = '\0'; // end of string
-
+	cipher_env_t* evt = ss_malloc(sizeof(cipher_env_t));
+	if (evt == NULL) {
+		FATAL("No enough memory.");
+	}
+	enc_init(evt, decpwd, "aes-256-cfb");
+	enc_ctx_t* ctx = ss_malloc(sizeof(enc_ctx_t));
+	enc_ctx_init(evt, ctx, 0);
+	char* outbuf = ss_malloc(pos + 128);
+	size_t outsize;
+	if (ss_decrypt_buffer(evt,ctx,buf,pos+1,outbuf,&outsize)) {
+		FATAL("decode config err");
+	}
+	enc_ctx_release(evt, ctx);
+	enc_release(evt);
+	ss_free(ctx);
+	ss_free(evt);
+	ss_free(buf);
+	outbuf[outsize - 1] = '\0';
     json_settings settings = { 0UL, 0, NULL, NULL, NULL };
     char error_buf[512];
-    obj = json_parse_ex(&settings, buf, pos, error_buf);
-
+    obj = json_parse_ex(&settings, outbuf, pos, error_buf);
+	ss_free(outbuf);
     if (obj == NULL) {
         FATAL(error_buf);
     }

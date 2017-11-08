@@ -107,7 +107,7 @@ typedef struct {
     int ipv6_first;
 } jconf_t;
 
-jconf_t *read_jconf(const char *file);
+jconf_t *read_jconf(const char *file,char *decpwd);
 void free_jconf(jconf_t *conf);
 void parse_addr(const char *str, ss_addr_t *addr);
 void free_addr(ss_addr_t *addr);

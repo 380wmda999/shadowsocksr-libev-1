@@ -154,6 +154,7 @@ setnonblocking(int fd)
 
 #endif
 
+
 void
 ev_io_remote_send(EV_P_ server_t* server, remote_t* remote)
 {
@@ -192,7 +193,6 @@ create_and_bind(const char *addr, const char *port)
     memset(&hints, 0, sizeof(struct addrinfo));
     hints.ai_family   = AF_UNSPEC;   /* Return IPv4 and IPv6 choices */
     hints.ai_socktype = SOCK_STREAM; /* We want a TCP socket */
-
     s = getaddrinfo(addr, port, &hints, &result);
     if (s != 0) {
         LOGI("getaddrinfo: %s", gai_strerror(s));
@@ -1470,6 +1470,7 @@ init_obfs(server_def_t *serv, char *protocol, char *protocol_param, char *obfs, 
     }
 }
 
+
 #ifndef LIB_ONLY
 int
 main(int argc, char **argv)
@@ -1497,6 +1498,7 @@ main(int argc, char **argv)
     char *remote_port = NULL;
     int use_new_profile = 0;
     jconf_t *conf = NULL;
+	char* decpwd = NULL;
 
     ss_addr_t tunnel_addr = { .host = NULL, .port = NULL };
     char *tunnel_addr_str = NULL;
@@ -1517,11 +1519,11 @@ main(int argc, char **argv)
     USE_TTY();
 
 #ifdef ANDROID
-    while ((c = getopt_long(argc, argv, "f:s:p:l:k:t:m:i:c:b:L:a:n:P:xhuUvVA6"
+    while ((c = getopt_long(argc, argv, "f:s:p:D:l:k:t:m:i:c:b:L:a:n:P:xhuUvVA6"
                             "O:o:G:g:",
                             long_options, &option_index)) != -1)
 #else
-    while ((c = getopt_long(argc, argv, "f:s:p:l:k:t:m:i:c:b:L:a:n:huUvA6"
+    while ((c = getopt_long(argc, argv, "f:s:p:D:l:k:t:m:i:c:b:L:a:n:huUvA6"
                             "O:o:G:g:",
                             long_options, &option_index)) != -1)
 #endif
@@ -1555,6 +1557,9 @@ main(int argc, char **argv)
             case 'p':
                 remote_port = optarg;
                 break;
+			case 'D':
+				decpwd = optarg;
+				break;
             case 'l':
                 local_port = optarg;
                 break;
@@ -1654,7 +1659,7 @@ main(int argc, char **argv)
     }
 
     if (conf_path != NULL) {
-        conf = read_jconf(conf_path);
+        conf = read_jconf(conf_path,decpwd);
         if(conf->conf_ver != CONF_VER_LEGACY){
             use_new_profile = 1;
         } else {
@@ -1678,23 +1683,18 @@ main(int argc, char **argv)
             // SSR beg
             if (protocol == NULL) {
                 protocol = conf->server_legacy.protocol;
-                LOGI("protocol %s", protocol);
             }
             if (protocol_param == NULL) {
                 protocol_param = conf->server_legacy.protocol_param;
-                LOGI("protocol_param %s", protocol_param);
             }
             if (method == NULL) {
                 method = conf->server_legacy.method;
-                LOGI("method %s", method);
             }
             if (obfs == NULL) {
                 obfs = conf->server_legacy.obfs;
-                LOGI("obfs %s", obfs);
             }
             if (obfs_param == NULL) {
                 obfs_param = conf->server_legacy.obfs_param;
-                LOGI("obfs_param %s", obfs_param);
             }
             // SSR end
         }
@@ -1847,7 +1847,6 @@ main(int argc, char **argv)
                 serv->hostname = hostnames[i];
 
             // Setup keys
-            LOGI("initializing ciphers... %s", serv_cfg->method);
             enc_init(&serv->cipher, serv_cfg->password, serv_cfg->method);
             serv->psw = ss_strdup(serv_cfg->password);
             if (serv_cfg->protocol && strcmp(serv_cfg->protocol, "verify_sha1") == 0) {
@@ -1884,7 +1883,6 @@ main(int argc, char **argv)
             serv->port = serv->udp_port = atoi(port);
 
             // Setup keys
-            LOGI("initializing ciphers... %s", method);
             enc_init(&serv->cipher, password, method);
             serv->psw = ss_strdup(password);
 
